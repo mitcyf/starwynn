@@ -5,6 +5,7 @@ verbose = True
 rate_limit = 180
 
 request_delay = 60/rate_limit
+GATHERING = ["fishing", "woodcutting", "mining", "farming"]
 
 def get_players():
     if verbose:
@@ -41,13 +42,6 @@ def add_players(file, players): # ChatGPT
             print("no new players to add")
     else:
         new_df.to_csv(file, mode='w', index=False)
-    
-    ###
-
-    
-        
-
-
 
 
 def find_prof(level_min, file):
@@ -62,7 +56,7 @@ def find_prof(level_min, file):
     for uuid in players:
         try:
             player_data = requests.get(f"https://api.wynncraft.com/v3/player/{uuid}?fullResult").json()
-            profs = ["fishing", "woodcutting", "mining", "farming"]
+            profs = GATHERING
             
             valid = any([any([char["professions"][profession]["level"] >= level_min for profession in profs]) for char in player_data["characters"].values() if char["professions"]])
 
@@ -84,6 +78,111 @@ def find_prof(level_min, file):
     
     add_players(file, valid_players)
 
+
+
+def find_active_prof(file):
+    try:
+        assert file[-4:] == ".csv"
+    except AssertionError:
+        file += ".csv"
+    assert os.path.exists(file)
+
+    df = pd.read_csv(file)
+    uuids = df['UUID'].tolist()
+    players = get_players()["players"]
+
+    player_world = []
+    for uuid in uuids:
+        if uuid in players.keys():
+            player_world.append((uuid, players[uuid]))
+    return player_world
+
+def sum_worlds(player_world):
+    worlds = {}
+    for pair in player_world:
+        if pair[1] not in worlds.keys():
+            worlds[pair[1]] = 1
+        else:
+            worlds[pair[1]] += 1
+    
+    return worlds
+
+def dict_diff(dict1, dict2):
+    out_dict = {key: value for key, value in dict1.items()}
+    for key, value in dict2.items():
+        if key not in out_dict.keys():
+            out_dict[key] = -value
+        else:
+            out_dict[key] -= value
+    out_dict = {key: value for key, value in out_dict.items() if value != 0}
+    return out_dict
+    
+class Stalker:
+    def __init__(self, file, delay):
+        self.file = file
+        self.players = sum_worlds(find_active_prof(self.file))
+        self.delay = delay
+        print(f"initiated stalker for {self.file}")
+    
+    def update(self):
+        current_players = sum_worlds(find_active_prof(self.file))
+        print(dict_diff(current_players, self.players))
+        self.players = current_players
+    
+    def current(self):
+        print(self.players)
+    
+    def wait(self):
+        time.sleep(self.delay)
+
+
+
+
+
+def get_total_prof(player, profs=GATHERING):
+    pass # TODO
+
 if __name__ == "__main__":
+    # prof_stalker = Stalker("known_prof", 5)
+    # while True:
+    #     prof_stalker.update()
+    #     prof_stalker.current()
+    #     prof_stalker.wait()
+
+    # recheck_timer = 60
+    # recheck_count = 5
+    # last_players = []
+    # for i in range(recheck_count):
+    #     data = get_players()
+    #     current_players = list(data["players"].keys())
+        
+    #     if last_players:
+    #         log_off = []
+    #         log_on = []
+
+    #         # for old in last_players:
+    #         #     if old not in current_players:
+    #         #         log_off.append(old)
+
+    #         # for new in current_players:
+    #         #     if new not in last_players:
+    #         #         log_on.append(new)
+        
+    #         for old_index in range(len(last_players)):
+    #             if last_players[old_index] not in current_players:
+    #                 log_off.append(old_index)
+
+    #         for new_index in range(len(current_players)):
+    #             if current_players[new_index] not in last_players:
+    #                 log_on.append(new_index)
+                    
+    #         print("log off", log_off)
+    #         print("log on", log_on)
+    #         print("------")
+        
+    #     last_players = current_players
+    #     time.sleep(recheck_timer)
+
 
     find_prof(80, "known_prof")
+    #print(sum_worlds(find_active_prof("known_prof")))
