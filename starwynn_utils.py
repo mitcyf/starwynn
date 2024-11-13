@@ -24,7 +24,7 @@ def list_to_csv(data, file):
         for item in data:
             writer.writerow([item])
 
-def define_claim_from_guild(prefix, file):
+def define_claim_from_guild(prefix, file=""):
     try:
         assert file[-4:] == ".csv"
     except AssertionError:
@@ -36,7 +36,8 @@ def define_claim_from_guild(prefix, file):
     for terr, info in territories.items():
         if info["guild"]["prefix"] == prefix:
             claim_list.append(terr)
-    list_to_csv(claim_list, file)
+    if file != ".csv":
+        list_to_csv(claim_list, file)
 
     return claim_list
 
